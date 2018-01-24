@@ -7,7 +7,7 @@
 #  @date
 #  @brief
 #
-from sqlalchemy import ForeignKey, Sequence
+from sqlalchemy import ForeignKey, Sequence, Boolean
 
 from sqlalchemy import Column, create_engine
 from sqlalchemy.orm import sessionmaker
@@ -308,6 +308,15 @@ class BaseModel(_Base):
             for column_name in self._column_name_sets
         )
 
+    def set_with_dict(self, mdict=None):
+
+        for column_name in self._column_name_sets:
+            if column_name in mdict:
+                var = mdict[column_name]
+                setattr(self, column_name, var)
+
+        return
+
     @classmethod
     def get_column_name_sets(cls):
         """
@@ -360,9 +369,9 @@ class User(BaseModel):
     # updated_on = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     def set_with_dict(self, mdict=None):
-        mdict = {'product_code': 'SH1385', 'acc_id': 900166022, 'product_name': '中信期货金富招商1号',
-                 'product_share': 14000, 'manage_asset_value': 5, 'current_nav': 0, 'warning_line': 0.9,
-                 'liquidation_line': 0.88, 'remarks': '持仓股票停牌，二次清算', 'report_date': 20171208}
+        # mdict = {'product_code': 'SH1385', 'acc_id': 900166022, 'product_name': '中信期货金富招商1号',
+        #          'product_share': 14000, 'manage_asset_value': 5, 'current_nav': 0, 'warning_line': 0.9,
+        #          'liquidation_line': 0.88, 'remarks': '持仓股票停牌，二次清算', 'report_date': 20171208}
         # column_name_list = [
         #     value[0] for value in self._sa_instance_state.attrs.items()
         # ]
@@ -374,11 +383,51 @@ class User(BaseModel):
 
         return
 
-# def init_db(engine):
-#     BaseModel.metadata.create_all(engine)
-#
-# def drop_db():
-#     BaseModel.metadata.drop_all(engine)
+
+class O32(BaseModel):
+    __tablename__ = 'o32'
+
+    id = Column(Integer,Sequence('o32_id_seq'),primary_key=True)
+    product_code = Column(String(32))
+    acc_id = Column(Integer())
+    product_name = Column(String(50))
+    product_share = Column(Integer())
+    manage_asset_value = Column(Numeric(20, 2))
+    current_nav = Column(Numeric(12, 2))
+    warning_line = Column(Numeric(12, 2))
+    liquidation_line= Column(Numeric(12, 2))
+    remarks = Column(String(50))
+    report_date = Column(String(50))
+    last_modified_date = Column(DateTime, default=datetime.datetime.now)
+
+
+class ContractInfo(BaseModel):
+    __tablename__ = 'contractinfo'
+
+    id = Column(Integer, Sequence('id_seq'), primary_key=True)
+    exchange = Column(String(32))
+    symbol = Column(String(32))
+    contract = Column(String(32))
+    bid1 = Column(Numeric(20, 2))
+    mid = Column(Numeric(20, 2))
+    ask1 = Column(Numeric(20, 2))
+    multiplier = Column(Integer())
+    isexpired = Column(Boolean())
+    servertime = Column(DateTime, default=datetime.datetime.now)
+    preclose = Column(Numeric(12, 2))
+    pctchange = Column(Numeric(12, 2))
+    lastprice = Column(Numeric(12, 2))
+    impliedvol = Column(Numeric(12, 2))
+    initialvol = Column(Numeric(12, 2))
+    midvol = Column(Numeric(12, 2))
+    last_modified_date = Column(DateTime, default=datetime.datetime.now)
+
+
+def init_db(engine):
+    BaseModel.metadata.create_all(engine)
+
+def drop_db(engine):
+    BaseModel.metadata.drop_all(engine)
 
 def main():
     trade_constr = 'oracle://test1:test1@10.21.68.206:1521/trade'
@@ -398,7 +447,7 @@ end;''')
     Session = sessionmaker(bind=engine)
     session = Session()  # class session -> object
     user = User(product_code='a')
-    user.set_with_dict()
+    # user.set_with_dict()
     print(user.to_dict())
     session.add(user)
     user = User(product_code='b')
@@ -421,7 +470,32 @@ end;''')
         data_list = df.to_dict(orient='records')
         session.bulk_insert_mappings(User, data_list)
 
+    wp_xls = pd.ExcelFile('./wp/wp.xls')
+    print(wp_xls.sheet_names)
+    for sheet_name in wp_xls.sheet_names:
 
+        if sheet_name == 'ContractInfo':
+            sheet_df = pd.read_excel('./wp/wp.xls', sheet_name=sheet_name)
+            sheet_df.rename(columns=lambda x: x.strip().lower(), inplace=True)
+            number_cols = {'投资者代码', '产品份额', '最新净值', '单位净值', '预警线', '清盘线'}
+            for col in old_col_names:
+                if col in number_cols:
+                    sheet_df[col] = sheet_df[col].replace(['-', '不设清盘线'], [0, 0])
+                    # clean_df[col].replace ({'-':0, '不设清盘线':0})
+                    sheet_df[col] = sheet_df[col].fillna(0)
+                else:
+                    sheet_df[col] = sheet_df[col].replace({'-': '0', '不设清盘线': '0'})
+                    sheet_df[col] = sheet_df[col].fillna('0')
+            data_list = sheet_df.to_dict(orient='records')
+            print(data_list)
+            print(data_list[0])
+            var = ContractInfo()
+            test_dict = {'exchange': 'DCE', 'symbol': 'C', 'contract': 'C1701.DCE'}
+            var.set_with_dict(test_dict)
+            session.add(var)
+                # session.bulk_insert_mappings(ContractInfo, data_list)
+                # sheet_df.to_excel(writer, sheet_name=sheet_name, index=False)
+                # writer.save()
     # init_db()
     session.commit()
     return
