@@ -208,6 +208,7 @@ def insert_direct(data_list=None, tablename='trades'):
     # meta = MetaData(bind=engine, reflect=True)
     # o_table = meta.tables[tablename.lower()]
     meta = MetaData (bind=engine)
+    meta = MetaData(bind=engine, reflect=True)
     from sqlalchemy import DateTime
     o_table = Table (tablename.lower (), meta,
                      Column('id', Integer, Sequence('id_seq'), primary_key=True),
@@ -470,22 +471,43 @@ end;''')
         data_list = df.to_dict(orient='records')
         session.bulk_insert_mappings(User, data_list)
 
-    wp_xls = pd.ExcelFile('./wp/wp.xls')
+    wp_file_path = './wp/contract.xlsx'
+    wp_xls = pd.ExcelFile(wp_file_path)
     print(wp_xls.sheet_names)
     for sheet_name in wp_xls.sheet_names:
 
         if sheet_name == 'ContractInfo':
-            sheet_df = pd.read_excel('./wp/wp.xls', sheet_name=sheet_name)
+            sheet_df = pd.read_excel(wp_file_path, sheet_name=sheet_name)
+            print(sheet_df)
             sheet_df.rename(columns=lambda x: x.strip().lower(), inplace=True)
-            number_cols = {'投资者代码', '产品份额', '最新净值', '单位净值', '预警线', '清盘线'}
+            old_col_names = sheet_df.columns.tolist()
+
+            str_cols = ['exchange', 'symbol', 'contract', ]
+            number_cols = {'bid1', 'mid', 'ask1', 'multiplier',
+                           'preclose', 'pctchange', 'lastprice', 'impliedvol', 'initialvol',
+                           'midvol',
+
+                           }
+            time_cols = ['servertime', ]
+            bool_cols = ['isexpired']
             for col in old_col_names:
+                print(col)
                 if col in number_cols:
-                    sheet_df[col] = sheet_df[col].replace(['-', '不设清盘线'], [0, 0])
-                    # clean_df[col].replace ({'-':0, '不设清盘线':0})
+                    sheet_df[col] = sheet_df[col].astype('float64')
+
+
                     sheet_df[col] = sheet_df[col].fillna(0)
+                elif col in bool_cols:
+                    sheet_df[col] = sheet_df[col].fillna(False)
+                    print(sheet_df[col])
+                    sheet_df[col] = sheet_df[col].replace([0, ], [False, ])
+                    # sheet_df[col] = sheet_df[col].replace(['FALSE', ], [False, ])
+                elif col in time_cols:
+                    sheet_df[col] = datetime.datetime.now()
                 else:
-                    sheet_df[col] = sheet_df[col].replace({'-': '0', '不设清盘线': '0'})
+                    # sheet_df[col] = sheet_df[col].replace({'-': '0', '不设清盘线': '0'})
                     sheet_df[col] = sheet_df[col].fillna('0')
+            print(sheet_df)
             data_list = sheet_df.to_dict(orient='records')
             print(data_list)
             print(data_list[0])
@@ -493,9 +515,8 @@ end;''')
             test_dict = {'exchange': 'DCE', 'symbol': 'C', 'contract': 'C1701.DCE'}
             var.set_with_dict(test_dict)
             session.add(var)
-                # session.bulk_insert_mappings(ContractInfo, data_list)
-                # sheet_df.to_excel(writer, sheet_name=sheet_name, index=False)
-                # writer.save()
+            session.bulk_insert_mappings(ContractInfo, data_list)
+
     # init_db()
     session.commit()
     return
