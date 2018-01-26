@@ -210,10 +210,12 @@ def insert_direct(data_list=None, tablename='trades'):
     meta = MetaData (bind=engine)
     meta = MetaData(bind=engine, reflect=True)
     from sqlalchemy import DateTime
+    # album = Table('Album', metadata, autoload=True, autoload_with=engine)
     o_table = Table (tablename.lower (), meta,
                      Column('id', Integer, Sequence('id_seq'), primary_key=True),
                      Column('last_modified_date', DateTime, default=datetime.datetime.now),
-                     autoload=True)
+                     autoload=True, autoload_with=engine)
+    print(meta.tables[tablename.lower ()])
     # t = Table('mytable', metadata,
     #           Column('id', Integer, Sequence('id_seq'), primary_key=True),
     #           autoload=True

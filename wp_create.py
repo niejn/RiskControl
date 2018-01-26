@@ -90,7 +90,7 @@ setattr(ModelMeta, '__new__', modelmeta__new__)
 class ContractInfo(BaseModel):
     __tablename__ = 'contractinfo'
 
-    id = Column(Integer, Sequence('id_seq'), primary_key=True)
+    id = Column(Integer, Sequence('contractinfo_id_seq'), primary_key=True)
     exchange = Column(String(32))
     symbol = Column(String(32))
     contract = Column(String(32))
@@ -207,7 +207,7 @@ class PMS_Fut(BaseModel):
     cashvalue = Column(Numeric(12, 2))
     pnl = Column(Numeric(12, 2))
     lastprice = Column(Numeric(12, 2))
-    isexpired = Column(String(40))
+    isexpired = Column(Boolean)
     multiplier = Column(Integer)
 
 
@@ -251,56 +251,56 @@ def main():
       end if;
       end;'''.format(name='contractinfo'))
     init_db(engine=engine)
-    Session = sessionmaker(bind=engine)
-    session = Session()  # class session -> object
-
-    wp_file_path = './wp/contract.xlsx'
-    wp_xls = pd.ExcelFile(wp_file_path)
-    print(wp_xls.sheet_names)
-    for sheet_name in wp_xls.sheet_names:
-
-        if sheet_name == 'ContractInfo':
-            sheet_df = pd.read_excel(wp_file_path, sheet_name=sheet_name)
-            print(sheet_df)
-            sheet_df.rename(columns=lambda x: x.strip().lower(), inplace=True)
-            old_col_names = sheet_df.columns.tolist()
-
-            str_cols = ['exchange', 'symbol', 'contract', ]
-            number_cols = {'bid1', 'mid', 'ask1', 'multiplier',
-                           'preclose', 'pctchange', 'lastprice', 'impliedvol', 'initialvol',
-                           'midvol',
-
-                           }
-            time_cols = ['servertime', ]
-            bool_cols = ['isexpired']
-            for col in old_col_names:
-                print(col)
-                if col in number_cols:
-                    sheet_df[col] = sheet_df[col].astype('float64')
-
-                    sheet_df[col] = sheet_df[col].fillna(0)
-                elif col in bool_cols:
-                    sheet_df[col] = sheet_df[col].fillna(False)
-                    print(sheet_df[col])
-                    sheet_df[col] = sheet_df[col].replace([0, ], [False, ])
-                    # sheet_df[col] = sheet_df[col].replace(['FALSE', ], [False, ])
-                elif col in time_cols:
-                    sheet_df[col] = datetime.datetime.now()
-                else:
-                    # sheet_df[col] = sheet_df[col].replace({'-': '0', '不设清盘线': '0'})
-                    sheet_df[col] = sheet_df[col].fillna('0')
-            print(sheet_df)
-            data_list = sheet_df.to_dict(orient='records')
-            print(data_list)
-            print(data_list[0])
-            var = ContractInfo()
-            test_dict = {'exchange': 'DCE', 'symbol': 'C', 'contract': 'C1701.DCE'}
-            var.set_with_dict(test_dict)
-            session.add(var)
-            session.bulk_insert_mappings(ContractInfo, data_list)
-
-
-    session.commit()
+    # Session = sessionmaker(bind=engine)
+    # session = Session()  # class session -> object
+    #
+    # wp_file_path = './wp/contract.xlsx'
+    # wp_xls = pd.ExcelFile(wp_file_path)
+    # print(wp_xls.sheet_names)
+    # for sheet_name in wp_xls.sheet_names:
+    #
+    #     if sheet_name == 'ContractInfo':
+    #         sheet_df = pd.read_excel(wp_file_path, sheet_name=sheet_name)
+    #         print(sheet_df)
+    #         sheet_df.rename(columns=lambda x: x.strip().lower(), inplace=True)
+    #         old_col_names = sheet_df.columns.tolist()
+    #
+    #         str_cols = ['exchange', 'symbol', 'contract', ]
+    #         number_cols = {'bid1', 'mid', 'ask1', 'multiplier',
+    #                        'preclose', 'pctchange', 'lastprice', 'impliedvol', 'initialvol',
+    #                        'midvol',
+    #
+    #                        }
+    #         time_cols = ['servertime', ]
+    #         bool_cols = ['isexpired']
+    #         for col in old_col_names:
+    #             print(col)
+    #             if col in number_cols:
+    #                 sheet_df[col] = sheet_df[col].astype('float64')
+    #
+    #                 sheet_df[col] = sheet_df[col].fillna(0)
+    #             elif col in bool_cols:
+    #                 sheet_df[col] = sheet_df[col].fillna(False)
+    #                 print(sheet_df[col])
+    #                 sheet_df[col] = sheet_df[col].replace([0, ], [False, ])
+    #                 # sheet_df[col] = sheet_df[col].replace(['FALSE', ], [False, ])
+    #             elif col in time_cols:
+    #                 sheet_df[col] = datetime.datetime.now()
+    #             else:
+    #                 # sheet_df[col] = sheet_df[col].replace({'-': '0', '不设清盘线': '0'})
+    #                 sheet_df[col] = sheet_df[col].fillna('0')
+    #         print(sheet_df)
+    #         data_list = sheet_df.to_dict(orient='records')
+    #         print(data_list)
+    #         print(data_list[0])
+    #         var = ContractInfo()
+    #         test_dict = {'exchange': 'DCE', 'symbol': 'C', 'contract': 'C1701.DCE'}
+    #         var.set_with_dict(test_dict)
+    #         session.add(var)
+    #         session.bulk_insert_mappings(ContractInfo, data_list)
+    #
+    #
+    # session.commit()
 
     return
 
