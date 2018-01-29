@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 from sqlalchemy import ForeignKey, Sequence, Boolean
 from sqlalchemy import Column, create_engine
 from sqlalchemy.orm import sessionmaker
@@ -109,23 +110,13 @@ def get_data(futures_path=None, file_type='xlsx'):
     return df_list
 
 
-def insert_wp_sheet(type_dict=None, wp_file_path=None, sheet_name=None, meta=None, session=None):
+def insert_wp_sheet(sheet_df=None, type_dict=None, wp_file_path=None, sheet_name=None, meta=None, session=None):
     tablename = sheet_name.lower()
-    # tablename = 'pms_opt'
-    # sheet_name = 'PMS_Opt'
     str_cols = type_dict['str_cols']
     number_cols = type_dict['number_cols']
     time_cols = type_dict['time_cols']
     bool_cols = type_dict['bool_cols']
 
-    # str_cols = ['contractname', 'basecontract', ]
-    # number_cols = ['futuresmultiplier', 'netposition', 'longposition', 'shortposition', 'stddelta', 'stdgamma',
-    #                'stdvega',
-    #                'stdtheta', 'stdrho', 'cashdelta', 'cashgamma', 'pctcashgamma', 'pctvega', 'dailytheta',
-    #                'marketvalue',
-    #                'cashvalue', 'pnl', 'theovalue', 'lastprice']
-    # time_cols = []
-    # bool_cols = ['isexpired']
 
     seq_name = tablename + '_id_seq'
     PMS_Opt_mtable = Table(tablename, meta,
@@ -137,15 +128,9 @@ def insert_wp_sheet(type_dict=None, wp_file_path=None, sheet_name=None, meta=Non
         pass
 
     mapper(PMS_Opt, PMS_Opt_mtable)
-
-    sheet_df = pd.read_excel(wp_file_path, sheet_name=sheet_name, encoding='utf-8')
     print(sheet_df)
     sheet_df.rename(columns=lambda x: x.strip().lower(), inplace=True)
     old_col_names = sheet_df.columns.tolist()
-
-    # sheet_df.to_sql (sheet_name.lower(), engine, if_exists='append', index=False)
-
-
 
     for col in old_col_names:
         print(col)
@@ -160,16 +145,14 @@ def insert_wp_sheet(type_dict=None, wp_file_path=None, sheet_name=None, meta=Non
             sheet_df[col] = datetime.datetime.now()
         else:
             sheet_df[col] = sheet_df[col].astype('str')
-            # sheet_df[col] = sheet_df[col].str.encode("utf-8")
-
+            [col] = sheet_df[col].str.replace(u'\xa0', u' ')
             sheet_df[col] = sheet_df[col].fillna('0')
     print(sheet_df)
-    # sheet_df = sheet_df.drop(str_cols, axis=1)
     data_list = sheet_df.to_dict(orient='records')
     print(data_list)
     num_rows_deleted = session.query(PMS_Opt).delete()
     print(repr(num_rows_deleted) + " rows deleted!")
-    data_list = data_list[0:10]
+    # data_list = data_list[0:10]
     session.bulk_insert_mappings(PMS_Opt, data_list)
     session.commit()
     return
@@ -388,15 +371,15 @@ def main():
     print(wp_xls.sheet_names)
 
     wp_sheet_names = ['ContractInfo', 'PMS_Opt', 'PMS_Fut', 'TradingBlotter']
-    wp_sheet_names = ['PMS_Fut', 'TradingBlotter']
+    # wp_sheet_names = ['PMS_Fut', 'TradingBlotter']
 
     for sheet_name in wp_xls.sheet_names:
-        var = wp_xls.parse(sheet_name)
-        # type_dict=None, wp_file_path=None, sheet_name=None, meta=None, session=None
+        sheet_df = wp_xls.parse(sheet_name)
         if sheet_name not in wp_sheet_names:
             continue
         print(sheet_name)
-        insert_wp_sheet(type_dict=type_config[sheet_name], wp_file_path=wp_file_path, sheet_name=sheet_name, meta=meta, session=session)
+        insert_wp_sheet(sheet_df=sheet_df, type_dict=type_config[sheet_name],
+                        wp_file_path=wp_file_path, sheet_name=sheet_name, meta=meta, session=session)
         # break
 
 
